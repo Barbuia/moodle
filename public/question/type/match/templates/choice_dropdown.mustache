@@ -1,0 +1,89 @@
+{{!
+   This file is part of Moodle - http://moodle.org/
+
+   Moodle is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+
+   Moodle is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template qtype_match/choice_dropdown
+
+    Custom dropdown for matching question choices supporting MathJax and HTML content.
+
+    Context variables required for this template:
+    * fieldname - The name attribute for the hidden input.
+    * fieldid - A unique id for the dropdown elements.
+    * selectedvalue - The currently selected value (0 = nothing selected).
+    * selectedlabel - The display HTML of the currently selected option.
+    * disabled - Whether the dropdown is disabled (readonly).
+    * ariadescribedby - aria-describedby ids.
+    * accesshidelabel - The accessible label text for the dropdown.
+    * options - Array of options, each with:
+        * value - The option value.
+        * label - The option display label (may contain HTML/MathJax).
+        * selected - Whether this option is currently selected.
+
+    Example context (json):
+    {
+        "fieldname": "q1:1_sub0",
+        "fieldid": "menu_q1_1_sub0",
+        "selectedvalue": "0",
+        "selectedlabel": "Choose...",
+        "disabled": false,
+        "ariadescribedby": "q1:1_qtext q1:1_sub0_itemtext",
+        "accesshidelabel": "Answer 1",
+        "options": [
+            {"value": "1", "label": "\\(\\frac{1}{2}\\)", "selected": false},
+            {"value": "2", "label": "\\(\\frac{3}{4}\\)", "selected": true}
+        ]
+    }
+}}
+<span class="qtype_match_dropdown_wrapper d-inline-block position-relative ms-1"
+      data-dropdown-for="{{fieldname}}"
+      id="{{fieldid}}_wrapper">
+    {{! Accessible label for screen readers. }}
+    <label class="visually-hidden" for="{{fieldid}}">
+        {{{accesshidelabel}}}
+    </label>
+    {{! Hidden input carries the actual form value. }}
+    <input type="hidden"
+           name="{{fieldname}}"
+           id="{{fieldid}}"
+           value="{{selectedvalue}}"
+           {{#disabled}}disabled="disabled"{{/disabled}} />
+    {{! Visible button acting as the dropdown trigger. }}
+    <button type="button"
+            class="qtype_match_dropdown_button form-select d-inline-block text-start"
+            role="combobox"
+            aria-expanded="false"
+            aria-haspopup="listbox"
+            aria-controls="{{fieldid}}_listbox"
+            aria-describedby="{{ariadescribedby}}"
+        {{#disabled}}disabled="disabled" aria-disabled="true"{{/disabled}}>
+        {{{selectedlabel}}}
+    </button>
+    {{! Dropdown panel with the list of options. }}
+    <ul class="qtype_match_dropdown_panel list-unstyled border rounded bg-white shadow-sm"
+        id="{{fieldid}}_listbox"
+        role="listbox"
+        aria-label="{{{accesshidelabel}}}">
+        {{#options}}
+            <li class="qtype_match_dropdown_option px-3 py-2{{#selected}} active{{/selected}}"
+                role="option"
+                data-value="{{value}}"
+                aria-selected="{{#selected}}true{{/selected}}{{^selected}}false{{/selected}}"
+                tabindex="-1">
+                {{{label}}}
+            </li>
+        {{/options}}
+    </ul>
+</span>
