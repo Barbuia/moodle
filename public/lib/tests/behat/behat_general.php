@@ -2883,4 +2883,88 @@ EOF;
         unset_config('behat_frozen_clock');
         \core\di::set(\core\clock::class, new \core\system_clock());
     }
+
+    /**
+     * Drops a file (using a synthetic HTML5 DragEvent) onto a target element.
+     *
+     * This step is the HTML5 equivalent of {@see i_drag_and_i_drop_it_in()}: it dispatches a
+     * real `dragenter` / `dragover` / `drop` sequence with a `DataTransfer` containing a `File`
+     * object. It is the only reliable way to exercise drop zones backed by `dndupload.js` and
+     * similar code paths in Behat, because WebDriver cannot synthesise OS-level file drag
+     * operations.
+     *
+     * The file is read from the Moodle codebase, base64-encoded server-side and rehydrated
+     * into a real `File` object inside the browser, so no temporary file handling on the SUT
+     * is required.
+     *
+     * @When /^I drop file "(?P<filepath_string>(?:[^"]|\\")*)" on "(?P<element_string>(?:[^"]|\\")*)" "(?P<selectortype_string>[^"]*)"$/
+     *
+     * @param string $filepath Path of the file relative to dirroot (e.g. `lib/tests/fixtures/empty.txt`).
+     * @param string $element Element locator for the drop target.
+     * @param string $selectortype Selector type accepted by {@see get_selector()}.
+     */
+    #[\core\attribute\example('When I drop file "lib/tests/fixtures/empty.txt" on "Topic 1" "core_courseformat > Section"')]
+    public function i_drop_file_on(string $filepath, string $element, string $selectortype): void {
+        global $CFG;
+
+        $this->require_javascript();
+
+        $fullpath = $CFG->dirroot . DIRECTORY_SEPARATOR . ltrim($filepath, '/\\');
+        if (!is_readable($fullpath)) {
+            throw new ExpectationException(
+                "File '{$filepath}' could not be read from dirroot.",
+                $this->getSession(),
+            );
+        }
+
+        $targetnode = $this->get_selected_node($selectortype, $element);
+        $targetxpath = $targetnode->getXpath();
+
+        $payload = [
+            'name'    => basename($fullpath),
+            'type'    => mime_content_type($fullpath) ?: 'application/octet-stream',
+            'content' => base64_encode(file_get_contents($fullpath)),
+        ];
+
+        $script = <<<'JS'
+            (function(xpath, payload) {
+                const target = document.evaluate(
+                    xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null
+                ).singleNodeValue;
+                if (!target) {
+                    throw new Error('Drop target not found for xpath: ' + xpath);
+                }
+
+                const binary = atob(payload.content);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i);
+                }
+                const file = new File([bytes], payload.name, {type: payload.type});
+
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+
+                const rect = target.getBoundingClientRect();
+                const eventInit = {
+                    bubbles: true,
+                    cancelable: true,
+                    composed: true,
+                    clientX: rect.left + (rect.width / 2),
+                    clientY: rect.top + (rect.height / 2),
+                    dataTransfer: dataTransfer,
+                };
+
+                target.dispatchEvent(new DragEvent('dragenter', eventInit));
+                target.dispatchEvent(new DragEvent('dragover', eventInit));
+                target.dispatchEvent(new DragEvent('drop', eventInit));
+            })(arguments[0], arguments[1]);
+        JS;
+
+        $this->getSession()->getDriver()->evaluateScript(
+            'return (function() { var s = ' . json_encode($script) . '; ' .
+            'var args = [' . json_encode($targetxpath) . ', ' . json_encode($payload) . ']; ' .
+            'return (new Function("arguments", "return (" + s + ").apply(null, arguments);"))(args); })();'
+        );
+    }
 }
