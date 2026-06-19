@@ -34,8 +34,19 @@ if (!defined('PHPUNIT_READFILE_ACCEL_TEST')) {
     exit(1);
 }
 
-$testdb = moodle_database::get_driver_instance($CFG->dbtype, $CFG->dblibrary);
-$testdb->connect($CFG->dbhost, $CFG->dbuser, $CFG->dbpass, $CFG->dbname, $CFG->phpunit_prefix);
+// Resolve the database connection details exactly like lib/phpunit/bootstrap.php does:
+// prefer the dedicated $CFG->phpunit_db* settings and fall back to the runtime db*
+// settings when they are not defined.
+$dbtype = $CFG->phpunit_dbtype ?? $CFG->dbtype;
+$dblibrary = $CFG->phpunit_dblibrary ?? $CFG->dblibrary;
+$dbhost = $CFG->phpunit_dbhost ?? $CFG->dbhost;
+$dbname = $CFG->phpunit_dbname ?? $CFG->dbname;
+$dbuser = $CFG->phpunit_dbuser ?? $CFG->dbuser;
+$dbpass = $CFG->phpunit_dbpass ?? $CFG->dbpass;
+$dboptions = $CFG->phpunit_dboptions ?? ($CFG->dboptions ?? []);
+
+$testdb = moodle_database::get_driver_instance($dbtype, $dblibrary);
+$testdb->connect($dbhost, $dbuser, $dbpass, $dbname, $CFG->phpunit_prefix, $dboptions);
 $DB = $testdb;
 
 set_debugging(DEBUG_DEVELOPER, true);
