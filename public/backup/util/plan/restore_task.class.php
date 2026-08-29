@@ -47,6 +47,15 @@ abstract class restore_task extends base_task {
         return $this->plan->get_info();
     }
 
+    /**
+     * Returns the mode of the restore (one of backup::MODE_* constants).
+     *
+     * @return int One of the backup::MODE_* constants (e.g. MODE_GENERAL, MODE_IMPORT).
+     */
+    public function get_mode() {
+        return $this->plan->get_mode();
+    }
+
     public function get_target() {
         return $this->plan->get_target();
     }
