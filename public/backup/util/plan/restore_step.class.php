@@ -63,6 +63,12 @@ abstract class restore_step extends base_step {
             return $value;
         }
 
+        // On import ("Import course data") the activity is copied 1:1, so dates must never
+        // be rolled forward/back based on the (unrelated) course start date. See MDL-89549.
+        if ($this->task->get_mode() == backup::MODE_IMPORT) {
+            return $value;
+        }
+
         static $cache = array();
         // Lookup cache.
         if (isset($cache[$this->get_restoreid()])) {

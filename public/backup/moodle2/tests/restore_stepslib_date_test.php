@@ -444,4 +444,72 @@ final class restore_stepslib_date_test extends \restore_date_testcase {
             $this->assertEquals($dates['originaldate'], $dates['restoredate']);
         }
     }
+
+    /**
+     * Importing course content ("Import course data", backup::MODE_IMPORT) must copy
+     * activity availability dates 1:1 and never roll them based on the course start date.
+     *
+     * @covers \restore_step::apply_date_offset
+     */
+    public function test_apply_date_offset_not_applied_on_import(): void {
+        global $DB;
+
+        // Source course with a fixed start date and a choice with concrete availability dates.
+        $sourcestart = strtotime('1 Jan 2024 00:00 GMT');
+        $timeopen = strtotime('15 Mar 2024 08:00 GMT');
+        $timeclose = strtotime('20 Mar 2024 18:00 GMT');
+        $source = $this->getDataGenerator()->create_course(['startdate' => $sourcestart]);
+        $this->getDataGenerator()->create_module('choice', [
+            'course' => $source->id,
+            'timeopen' => $timeopen,
+            'timeclose' => $timeclose,
+        ]);
+
+        // Target course with a clearly different start date.
+        $target = $this->getDataGenerator()->create_course(['startdate' => strtotime('1 Jun 2025 00:00 GMT')]);
+
+        // Import (copy) the source course content into the target course.
+        $this->import_course($source, $target);
+
+        // Availability dates must be identical - no offset applied on import.
+        $imported = $DB->get_record('choice', ['course' => $target->id], '*', MUST_EXIST);
+        $this->assertEquals($timeopen, $imported->timeopen);
+        $this->assertEquals($timeclose, $imported->timeclose);
+    }
+
+    /**
+     * Helper: import (copy) one course content into another using backup::MODE_IMPORT.
+     *
+     * @param \stdClass $source Source course.
+     * @param \stdClass $target Target course.
+     */
+    protected function import_course(\stdClass $source, \stdClass $target): void {
+        global $CFG, $USER;
+
+        $CFG->backup_file_logger_level = backup::LOG_NONE;
+
+        $bc = new \backup_controller(
+            backup::TYPE_1COURSE,
+            $source->id,
+            backup::FORMAT_MOODLE,
+            backup::INTERACTIVE_NO,
+            backup::MODE_IMPORT,
+            $USER->id
+        );
+        $backupid = $bc->get_backupid();
+        $bc->execute_plan();
+        $bc->destroy();
+
+        $rc = new \restore_controller(
+            $backupid,
+            $target->id,
+            backup::INTERACTIVE_NO,
+            backup::MODE_IMPORT,
+            $USER->id,
+            backup::TARGET_EXISTING_ADDING
+        );
+        $this->assertTrue($rc->execute_precheck());
+        $rc->execute_plan();
+        $rc->destroy();
+    }
 }
