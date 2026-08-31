@@ -235,3 +235,14 @@ Feature: Manage notification preferences - Email
     And I set the field "Password" to "student1"
     And I press "Log in"
     Then I should see "Notification preferences"
+
+  Scenario: A link to the notification preferences is available on the notifications page
+    Given the following "user preferences" exist:
+      | user     | preference                                     | value |
+      | student1 | message_provider_moodle_instantmessage_enabled | none  |
+    And I log in as "student1"
+    When I visit "/message/output/popup/notifications.php"
+    Then "Notification preferences" "button" should exist
+    When I click on "Notification preferences" "button"
+    Then I should see "Email"
+    And "message_provider_moodle_instantmessage_email" "field" should exist
