@@ -1450,4 +1450,38 @@ final class external_test extends \core_external\tests\externallib_testcase {
         $this->assertEquals(2, $result['ratinginfo']['ratings'][0]['count']);
         $this->assertEquals(2, $result['ratinginfo']['ratings'][0]['aggregate']);   // 2 is B, that is the average of A + C.
     }
+
+    /**
+     * Test that text filters (e.g. MathJax) are applied to the definition when filtering is requested.
+     *
+     * @covers \mod_glossary_external::get_entry_by_id
+     */
+    public function test_get_entry_by_id_applies_filters(): void {
+        $this->resetAfterTest(true);
+        $this->setAdminUser();
+
+        filter_set_global_state('mathjaxloader', TEXTFILTER_ON);
+
+        $gg = $this->getDataGenerator()->get_plugin_generator('mod_glossary');
+        $course = self::getDataGenerator()->create_course();
+        $glossary = self::getDataGenerator()->create_module('glossary', ['course' => $course->id]);
+
+        $maths = $gg->create_content($glossary, ['concept' => 'parabola', 'definition' => 'more \(y = x^2\)']);
+        $plain = $gg->create_content($glossary, ['concept' => 'plain', 'definition' => 'No maths here']);
+
+        // Without filtering (default): the raw definition is returned, no MathJax wrapper.
+        $return = mod_glossary_external::get_entry_by_id($maths->id);
+        $return = external_api::clean_returnvalue(mod_glossary_external::get_entry_by_id_returns(), $return);
+        $this->assertStringNotContainsString('filter_mathjaxloader_equation', $return['entry']['definition']);
+
+        // With filtering requested: the MathJax filter wraps the equation.
+        $return = mod_glossary_external::get_entry_by_id($maths->id, true);
+        $return = external_api::clean_returnvalue(mod_glossary_external::get_entry_by_id_returns(), $return);
+        $this->assertStringContainsString('filter_mathjaxloader_equation', $return['entry']['definition']);
+
+        // A definition without maths is unaffected even when filtering is requested.
+        $return = mod_glossary_external::get_entry_by_id($plain->id, true);
+        $return = external_api::clean_returnvalue(mod_glossary_external::get_entry_by_id_returns(), $return);
+        $this->assertStringNotContainsString('filter_mathjaxloader_equation', $return['entry']['definition']);
+    }
 }
