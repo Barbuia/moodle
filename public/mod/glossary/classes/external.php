@@ -1381,6 +1381,7 @@ class mod_glossary_external extends external_api {
     public static function get_entry_by_id_parameters() {
         return new external_function_parameters(array(
             'id' => new external_value(PARAM_INT, 'Glossary entry ID'),
+            'filter' => new external_value(PARAM_BOOL, 'Whether to apply text filters to the definition', VALUE_DEFAULT, false),
         ));
     }
 
@@ -1388,17 +1389,30 @@ class mod_glossary_external extends external_api {
      * Get an entry.
      *
      * @param int $id The entry ID.
+     * @param bool $filter Whether to apply text filters (e.g. MathJax) to the returned definition.
+     *                     Used by internal callers such as the glossary auto-link popup, which render
+     *                     the returned HTML directly and therefore need server-side filtering.
      * @return array Containing entry and warnings.
      * @since Moodle 3.1
      * @throws moodle_exception
      * @throws invalid_parameter_exception
      */
-    public static function get_entry_by_id($id) {
+    public static function get_entry_by_id($id, $filter = false) {
         global $DB, $USER;
 
-        $params = self::validate_parameters(self::get_entry_by_id_parameters(), array('id' => $id));
+        $params = self::validate_parameters(self::get_entry_by_id_parameters(), [
+            'id' => $id,
+            'filter' => $filter,
+        ]);
         $id = $params['id'];
         $warnings = array();
+
+        if ($params['filter']) {
+            // Apply text filters server-side so callers that render the returned HTML directly
+            // (e.g. the glossary auto-link popup) get filtered content such as MathJax equations.
+            $settings = \core_external\external_settings::get_instance();
+            $settings->set_filter(true);
+        }
 
         // Get and validate the glossary.
         $entry = $DB->get_record('glossary_entries', array('id' => $id), '*', MUST_EXIST);
