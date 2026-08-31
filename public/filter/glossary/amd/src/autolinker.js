@@ -92,6 +92,7 @@ const fetchGlossaryEntry = (entryId) => {
     const request = {
         methodname: 'mod_glossary_get_entry_by_id',
         args: {
+            filter: true,
             id: entryId,
         },
     };
