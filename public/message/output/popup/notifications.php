@@ -49,6 +49,16 @@ $personalcontext = context_user::instance($user->id);
 $PAGE->set_context($personalcontext);
 $PAGE->set_pagelayout('admin');
 
+// Provide a direct link to the notification preferences, mirroring the notifications popover.
+if (has_capability('moodle/user:editownmessageprofile', context_system::instance())) {
+    $preferencesurl = new moodle_url('/message/notificationpreferences.php');
+    $PAGE->set_button($OUTPUT->single_button(
+        $preferencesurl,
+        get_string('notificationpreferences', 'message'),
+        'get'
+    ));
+}
+
 // Display page header.
 $title = get_string('notifications', 'message');
 $PAGE->set_title($title);
